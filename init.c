@@ -21,6 +21,21 @@ main(void)
 
   for(;;){
     printf(1, "init: starting sh\n");
+    #ifdef DEFAULT
+      printf(1, "Scheduling Policy: Round Robin (DEFAULT)\n");
+    #else
+    #ifdef FCFS
+      printf(1, "Scheduling Policy: First Come First Serve (FCFS)\n");
+    #else
+    #ifdef PBS
+      printf(1, "Scheduling Policy: Priority Based Scheduling (PBS)\n");
+    #else
+    #ifdef MLFQ
+      printf(1, "Scheduling Policy: Multi-Level Feedback Queue (MLFQ)\n");
+    #endif
+    #endif
+    #endif
+    #endif
     pid = fork();
     if(pid < 0){
       printf(1, "init: fork failed\n");
