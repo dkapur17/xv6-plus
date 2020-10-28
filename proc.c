@@ -89,6 +89,11 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->priority = 60;
+  p->curq = -1;
+  p->nrun = 0;
+  
+  for(int i = 0; i < 5; i++)
+    p->q[i] = 0;
 
   release(&ptable.lock);
 
@@ -118,6 +123,7 @@ found:
   p->etime = 0;
   p->rtime = 0;
   p->iotime = 0;
+  p->wtime = 0;
   return p;
 }
 
@@ -593,15 +599,23 @@ int cps()
   struct proc *p;
   sti();
   acquire(&ptable.lock);
-  cprintf("name \t pid \t state \t priority\n");
+  // cprintf("name \t pid \t state \t priority\n");
+  #ifdef MLFQ
+    cprintf("PID   Priority \t State\t     r_time   w_time   n_run   cur_q\tq0\t q1\t q2 \t q3 \t q4 \n");
+  #else
+    cprintf("PID   Priority \t State\t     r_time   w_time   n_run\n");
+  #endif
+  char *stats[] = { "UNUSED", "EMBRYO", "SLEEPING", "RUNNABLE", "RUNNING", "ZOMBIE" };
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
-    if(p->state == SLEEPING)
-      cprintf("%s \t %d \t SLEEPING \t %d \n", p->name, p->pid, p->priority);
-    else if(p->state == RUNNING)
-      cprintf("%s \t %d \t RUNNING \t %d \n", p->name, p->pid, p->priority);
-    else if(p->state == RUNNABLE)
-      cprintf("%s \t %d \t RUNNABLE \t %d \n", p->name, p->pid, p->priority);
+    if(p->state != UNUSED)
+    {
+      #ifdef MLFQ
+        cprintf("%d \t %d \t %s \t %d \t %d \t %d \t %d \t %d \t %d \t %d \t %d \t %d \n", p->pid, p->priority, stats[p->state], p->rtime, p->wtime, p->nrun, p->curq, p->q[0], p->q[1], p->q[2], p->q[3], p->q[4]);
+      #else
+        cprintf("%d \t %d \t %s \t %d \t %d \t %d\n", p->pid, p->priority, stats[p->state], p->rtime, p->wtime, p->nrun);
+      #endif
+    }
   }
   release(&ptable.lock);
   return 23;

@@ -60,6 +60,7 @@ trap(struct trapframe *tf)
           myproc()->rtime++;
         else if(myproc()->state == SLEEPING)
           myproc()->iotime++;
+        myproc()->wtime = ticks - myproc()->ctime - myproc()->rtime - myproc()->iotime;
       }
 
     }
