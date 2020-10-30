@@ -376,7 +376,7 @@ scheduler(void)
     }
     #else
     #ifdef PBS
-    struct proc *q;
+    struct proc *q = 0;
     int highestP = -1;
     char updatePriority = 0;
     // Find the highest priority from the current process list
@@ -384,57 +384,56 @@ scheduler(void)
     {
       if(p->state != RUNNABLE)
         continue;
-      if(highestP = -1)
+      if(highestP == -1)
         highestP = p->priority;
       else if(highestP > p->priority)
         highestP = p->priority;
     }
-    
-    if(highestP == -1)
-      continue;
 
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(highestP != -1)
     {
-      if(p->state != RUNNABLE)
-        continue;
-      // Check for updates, if a process with a higher priority has enetered
-      for(q = ptable.proc; p < &ptable.proc[NPROC]; q++)
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
       {
-        if(q->priority < highestP)
+        if(p->state != RUNNABLE)
+          continue;
+        // Check for updates, if a process with a higher priority has enetered
+        for(q = ptable.proc; q < &ptable.proc[NPROC]; q++)
         {
-          if(q->state != RUNNABLE)
-            continue;
           if(q->priority < highestP)
           {
-            updatePriority = 1;
-            break;
+            if(q->state != RUNNABLE)
+              continue;
+            if(q->priority < highestP)
+            {
+              updatePriority = 1;
+              break;
+            }
           }
         }
+
+        if(updatePriority)
+          break;
+
+        if(p->priority == highestP)
+        {
+          // Switch to chosen process.  It is the process's job
+          // to release ptable.lock and then reacquire it
+          // before jumping back to us.
+          c->proc = p;
+          p->nrun++;
+          switchuvm(p);
+          p->state = RUNNING;
+
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+          
       }
-
-      if(updatePriority)
-        break;
-
-      if(p->priority == highestP)
-      {
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        p->nrun++;
-        switchuvm(p);
-        p->state = RUNNING;
-
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-        
     }
-    #elseif
     #else
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
