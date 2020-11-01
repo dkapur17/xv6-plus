@@ -570,7 +570,7 @@ scheduler(void)
         if(p->demoteflag)
         {
           p->demoteflag = 0;
-          if(p->curq < 4)
+          if(p->curq < NQUEUE-1)
             p->curq++;
         }
         push(p, p->curq);
