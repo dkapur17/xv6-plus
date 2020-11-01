@@ -60,7 +60,6 @@ trap(struct trapframe *tf)
           myproc()->rtime++;
         else if(myproc()->state == SLEEPING)
           myproc()->iotime++;
-        myproc()->wtime = ticks - myproc()->ctime - myproc()->rtime - myproc()->iotime;
       }
 
     }
@@ -115,7 +114,10 @@ trap(struct trapframe *tf)
   #ifndef FCFS
     if(myproc() && myproc()->state == RUNNING &&
       tf->trapno == T_IRQ0+IRQ_TIMER)
+    {
+      myproc()->lastruntime= ticks;
       yield();
+    }
   #endif
 
   // Check if the process has been killed since we yielded

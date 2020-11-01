@@ -54,11 +54,15 @@ struct proc {
   int etime;                   // End time of the process
   int rtime;                   // Total run time of the process
   int iotime;                  // Total time performing IO  
-  int wtime;                   // Time spent on the ready queue
   int priority;                // Priority level of the process [0, 100]. Lower is given higher preference
-  int curq;                    // Current execution queue
   int nrun;                    // Number of times it's been picked by the scheduler
-  int q[5];                    // Number of ticks recieved from each queue
+  int lastruntime;             // Last time when the process was run
+
+  int qticks[5];               // Number of ticks recieved from each queue
+  int curq;                    // Current execution queue
+  int curticks;                // Number of execution ticks in the current queue
+  int demoteflag;              // Flag to check if the current process is to be demoted
+  int entertime;               // Time at which the process is added to the current queue
 };
 
 // Process memory is laid out contiguously, low addresses first:
