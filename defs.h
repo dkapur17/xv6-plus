@@ -123,6 +123,9 @@ int             cps(void);
 int             set_priority(int new_priority, int pid);
 void            wakeup(void*);
 void            yield(void);
+void            setDemoteFlag(struct proc*);
+void            updateCurTicks(struct proc *);
+void            initQueues();
 
 // swtch.S
 void            swtch(struct context**, struct context*);

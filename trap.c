@@ -111,14 +111,26 @@ trap(struct trapframe *tf)
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
-  #ifndef FCFS
-    if(myproc() && myproc()->state == RUNNING &&
-      tf->trapno == T_IRQ0+IRQ_TIMER)
+    if(myproc() && myproc()->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER)
     {
+      #ifdef MLFQ
+      if(myproc()->curticks >= (1 << myproc()->curq))
+      {
+        setDemoteFlag(myproc());
+        myproc()->lastruntime = ticks;
+        yield();
+      }
+      else
+        updateCurTicks(myproc());
+      #else
+      #ifndef FCFS
       myproc()->lastruntime= ticks;
       yield();
+      #endif
+      #endif
     }
-  #endif
+    // Cut from here
+    // to here
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)

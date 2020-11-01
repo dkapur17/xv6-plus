@@ -11,4 +11,6 @@
 #define LOGSIZE      (MAXOPBLOCKS*3)  // max data blocks in on-disk log
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
+#define MAX_AGE      50  // Maximum time a process can stay in a lower level queue before being promoted
+#define NQUEUE       5   // Number of queues in MLFQ
 

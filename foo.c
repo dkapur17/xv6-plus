@@ -1,39 +1,47 @@
 #include "types.h"
-#include "stat.h"
 #include "user.h"
-#include "fcntl.h"
 
-int main(int argc, char *argv[]) {
-  int pid;
-  int k, n;
-  int x, z;
+int number_of_processes = 40;
 
-  if(argc < 2)
-	n = 1; //Default
-  else
-	n = atoi(argv[1]);
-  if (n < 0 || n > 20)
-	  n = 2;
-  x = 0;
-  pid = 0;
-  for ( k = 0; k < n; k++ ) 
+int main(int argc, char *argv[])
+{
+  int j;
+  for (j = 0; j < number_of_processes; j++)
   {
-    pid = fork ();
-    if ( pid < 0 ) 
-      printf(1, "%d failed in fork!\n", getpid()); 
-    else if(pid == 0)
+    int pid = fork();
+    if (pid < 0)
     {
-      sleep(5);
-      printf(1,"Child %d created\n",getpid());
-      for(z = 0; z < 4000000000; z++)
-          x = x + 3.14*89.64; //Useless calculation to consume CPU Time
-      break;
+      printf(1, "Fork failed\n");
+      continue;
     }
-    else
+    if (pid == 0)
     {
-      printf(1, "Parent %d creating child %d\n",getpid(), pid);
-      wait();
-      }
+
+        int flag = j%2;
+
+             if(flag == 0)
+             {
+                 sleep(200);
+                 for(volatile int i = 0; i<100000000; i++)
+                     ;
+             }
+             else if(flag == 1)
+             {
+                 for(volatile int i = 0; i<100000000; i++)
+                    ;
+                sleep(200);    
+             }
+    //   printf(1, "Process: %d Finished\n", j);
+      exit();
+    }
+    else{
+    set_priority(100-(j%2),pid); // will only matter for PBS, comment it out if not implemented yet (better priorty for more IO intensive jobs)
+    }
   }
+  for (j = 0; j < number_of_processes+5; j++)
+  {
+    wait();
+  }
+
   exit();
 }

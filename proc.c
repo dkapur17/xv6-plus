@@ -12,6 +12,78 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+// Queue related logic
+struct Queue{
+  struct proc* procs[NPROC];
+  int lastIndex;
+};
+
+struct Queue queues[NQUEUE];
+
+void initQueues()
+{
+  for(int i = 0; i < NQUEUE; i++)
+  {
+    queues[i].lastIndex = -1;
+    for(int j = 0; j < NPROC; j++)
+      queues[i].procs[j] = 0;
+  }
+}
+
+void push(struct proc *p, int qno)
+{
+  // If it already exists in the queue
+  for(int i = 0; i < queues[qno].lastIndex; i++)
+    if(queues[qno].procs[i]->pid == p->pid)
+      return;
+
+  p->entertime = ticks;
+  p->curq = qno;
+  queues[qno].lastIndex++;
+  int tailEnd = queues[qno].lastIndex;
+  queues[qno].procs[tailEnd] = p;
+  return;
+}
+
+void pop(struct proc *p, int qno)
+{
+  // Find the proc
+  int procIndex = -1;
+  for(int i = 0; i <= queues[qno].lastIndex; i++)
+    if(queues[qno].procs[i]->pid == p->pid)
+    {
+      procIndex = i;
+      break;
+    }
+  if(procIndex == -1)
+    return;
+
+  // Left shift by 1
+  for(int i = procIndex; i < queues[qno].lastIndex; i++)
+    queues[qno].procs[i] = queues[qno].procs[i+1];
+  
+  // Update the queue data
+  int lastIndex = queues[qno].lastIndex;
+  queues[qno].procs[lastIndex] = 0;
+  queues[qno].lastIndex--;
+}
+
+void setDemoteFlag(struct proc* p)
+{
+  acquire(&ptable.lock);
+  p->demoteflag = 1;
+  release(&ptable.lock);
+}
+
+void updateCurTicks(struct proc *p)
+{
+  acquire(&ptable.lock);
+  p->curticks++;
+  p->qticks[p->curq]++;
+  release(&ptable.lock);
+}
+
+// End of Queue Related Logic
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -92,11 +164,11 @@ found:
   p->nrun = 0;
   p->lastruntime = ticks;
 
-  p->curq = -1;  
+  p->curq = 0;  
   p->curticks = 0;
   p->demoteflag = 0;
   p->entertime = 0;
-  for(int i = 0; i < 5; i++)
+  for(int i = 0; i < NQUEUE; i++)
     p->qticks[i] = 0;
 
   release(&ptable.lock);
@@ -164,6 +236,9 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+  #ifdef MLFQ
+    push(p, 0);
+  #endif
 
   release(&ptable.lock);
 }
@@ -230,6 +305,10 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+
+  #ifdef MLFQ
+    push(np, 0);
+  #endif
 
   release(&ptable.lock);
 
@@ -306,6 +385,9 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
+        #ifdef MLFQ
+          pop(p, p->curq);
+        #endif
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -438,6 +520,63 @@ scheduler(void)
       }
     }
     #else
+    #ifdef MLFQ
+    for(int i = 1; i < NQUEUE; i++)
+      for(int j = 0; j <= queues[i].lastIndex; i++)
+      {
+        struct proc *p = queues[i].procs[j];
+        int procAge = ticks - p->entertime;
+        if(procAge > MAX_AGE)
+        {
+          pop(p, i);
+          push(p, i-1);
+        }
+      }
+    
+    struct proc * p = 0;
+
+    // Choosing a process to schedule
+
+    for(int i = 0; i < NQUEUE; i++)
+    {
+      if(queues[i].lastIndex != -1)
+      {
+        p = queues[i].procs[0];
+        pop(p, i);
+        break;
+      }
+    }
+
+    // Schedule the process
+    if(p && p->state == RUNNABLE)
+    {
+      p->curticks++;
+      p->nrun++;
+      p->qticks[p->curq]++;
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+
+      if(p && p->state == RUNNABLE)
+      {
+        p->curticks = 0;
+        if(p->demoteflag)
+        {
+          p->demoteflag = 0;
+          if(p->curq < 4)
+            p->curq++;
+        }
+        push(p, p->curq);
+      }
+    }
+    #else
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
@@ -457,6 +596,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+    #endif
     #endif
     #endif
     release(&ptable.lock);
@@ -571,7 +711,13 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
+    {
       p->state = RUNNABLE;
+      #ifdef MLFQ
+        p->curticks = 0;
+        push(p, p->curq);
+      #endif
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -597,7 +743,12 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
+      {
         p->state = RUNNABLE;
+        #ifdef MLFQ
+          push(p, p->curq);
+        #endif
+      }
       release(&ptable.lock);
       return 0;
     }
@@ -669,6 +820,9 @@ waitx(int *wtime, int *rtime)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
+        #ifdef MLFQ
+          pop(p, p->curq);
+        #endif
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -695,7 +849,6 @@ int cps()
   struct proc *p;
   sti();
   acquire(&ptable.lock);
-  // cprintf("name \t pid \t state \t priority\n");
   #ifdef MLFQ
     cprintf("PID   Priority \t State\t     r_time   w_time   n_run   cur_q\tq0\t q1\t q2 \t q3 \t q4 \n");
   #else
