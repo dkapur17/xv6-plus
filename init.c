@@ -21,9 +21,6 @@ main(void)
 
   for(;;){
     printf(1, "init: starting sh\n");
-    #ifdef DEFAULT
-    printf(1, "Scheduling Policy: Round Robin (DEFAULT)\n");
-    #else
     #ifdef FCFS
     printf(1, "Scheduling Policy: First Come First Serve (FCFS)\n");
     #else
@@ -32,7 +29,8 @@ main(void)
     #else
     #ifdef MLFQ
     printf(1, "Scheduling Policy: Multi-Level Feedback Queue (MLFQ)\n");
-    #endif
+    #else
+    printf(1, "Scheduling Policy: Round Robin (DEFAULT)\n");
     #endif
     #endif
     #endif
