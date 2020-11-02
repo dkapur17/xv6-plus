@@ -861,7 +861,13 @@ int cps()
     if(p->state == RUNNING || p->state == SLEEPING)
       wtime = 0;
     else
+    {
+      #ifdef MLFQ
+      wtime = ticks - p->entertime;
+      #else
       wtime = ticks - p->lastruntime;
+      #endif
+    }
     
     if(p->state != UNUSED)
     {
