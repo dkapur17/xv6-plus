@@ -34,8 +34,6 @@ Implemented `ps.c` that simply calls the `cps` syscall and added required fields
 
 First began by modifying the `Makefile` to add the macro based scheduler choice.
 
-**To the juniors "borrowing" my code: You're welcome :)**
-
 ### FCFS
 
 Iterate over the `ptable` and save a pointer to the process with the minimum value in `ctime` and is `RUNNABLE`. Then run it as done in the default scheduler.
@@ -75,3 +73,5 @@ We then iterate over the queues and find the first queue that has some processes
 So if a process relinquishes the CPU before its allowed time slice is over, it is added back at the end of the same queue. Otherwise, it is demoted to a lower priority queue, where it would take it potentially longer to execute. 
 
 Processes can game this system in the following way: If a process knows what the maximum allowed time is for the highest priority queue, it will first get to that queue, run for a while, that is just shorter than the threshold time, and right before it can be forcefully preempted from the CPU (in which case it would be pushed to a lower queue), it voluntarily relinquishes the CPU and heads back to the end of the same queue. This way the process stays in the highest priority queue, even though its exection time may be significantly longer than the threshold time for that queue.
+
+**To the juniors "borrowing" my code: You're welcome :)**
