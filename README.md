@@ -34,6 +34,8 @@ Implemented `ps.c` that simply calls the `cps` syscall and added required fields
 
 First began by modifying the `Makefile` to add the macro based scheduler choice.
 
+**To the juniors "borrowing" my code: You're welcome :)**
+
 ### FCFS
 
 Iterate over the `ptable` and save a pointer to the process with the minimum value in `ctime` and is `RUNNABLE`. Then run it as done in the default scheduler.
